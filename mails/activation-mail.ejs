@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>LMS Account Activation</title>
+    <meta http-equiv="content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style type="text/css">
+      /* Add your CSS styles here */
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+        min-width: 100%;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #222;
+        text-align: center;
+      }
+
+      a {
+        color: #000;
+        text-decoration: none;
+      }
+
+      h1 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        padding: 0;
+        font-size: 24px;
+        line-height: 1.25;
+        color: #fff;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      p {
+        margin-top: 0;
+        margin-bottom: 12px; /* Adjusted margin for paragraphs */
+        font-size: 18px; /* Increased font size for better readability */
+      }
+
+      table td {
+        vertical-align: top;
+      }
+
+      /* Layout */
+      .email-wrapper {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .email-header {
+        background-color: #0070f3;
+        padding: 24px;
+        color: #fff;
+        position: relative;
+      }
+
+      .email-header img {
+        width: 150px; /* Adjusted logo width */
+        height: auto;
+        display: block;
+        margin: 0 auto 20px; /* Added margin to center the logo */
+      }
+
+      .email-body {
+        padding: 24px;
+        background-color: #fff;
+      }
+
+      .email-footer {
+        padding: 24px;
+        background-color: #f6f6f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-wrapper">
+      <div class="email-header">
+        <img
+          src="https://www.brandbucket.com/sites/default/files/logo_uploads/294991/large_lerance_0.png"
+          alt="Ageny Logo"
+          width="150"
+          height="auto"
+          style="border-radius: 50%; border: 2px solid white"
+        />
+        <h1>Welcome to Our LMS Platform!</h1>
+      </div>
+      <div class="email-body">
+        <p>Hello <%= user.name %>,</p>
+        <p>
+          Thank you for registering for an account on our LMS platform. To
+          activate your account, please use the following activation code:
+        </p>
+        <h2 style="color: #0070f3"><%= activationCode %></h2>
+        <!-- Styled activation code -->
+        <p>
+          Please enter the code on the account activation page within the next 5
+          minutes.
+        </p>
+        <p>
+          If you didn't register for an e-learning account, please ignore this
+          email.
+        </p>
+      </div>
+      <div class="email-footer">
+        <p>
+          If you have any questions or need assistance, please contact our
+          support team at
+          <a href="mailto:support@campusbuddy.com">support@campusbuddy.com</a>.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
