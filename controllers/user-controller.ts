@@ -4,16 +4,15 @@ import { NextFunction, Request, Response } from "express";
 
 import jwt, { Secret } from "jsonwebtoken";
 
-import UserModel, { IUser } from "../models/user-model";
-import ErrorHandler from "../utils/errorHandler";
 import ejs from "ejs";
 import path from "path";
-import sendMail from "../utils/sendMail";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
+import UserModel, { IUser } from "../models/user-model";
+import { getUserById } from "../services/user-service";
+import ErrorHandler from "../utils/errorHandler";
 import { sendToken } from "../utils/jwt";
 import { redis } from "../utils/redis";
-import { get } from "http";
-import { getUserById } from "../services/user-service";
+import sendMail from "../utils/sendMail";
 
 // Register a user => /api/v1/register
 interface IRegisterationBody {
@@ -254,6 +253,35 @@ export const getUserInfo = CatchAsyncError(
     try {
       const userId = req.user?._id;
       getUserById(userId!, res);
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
+
+// social auth
+interface ISocialAuthBody {
+  name: string;
+  email: string;
+  avatar: string;
+}
+export const socialAuth = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, email, avatar } = req.body as ISocialAuthBody;
+
+      // check if the email already exists
+      const user = await UserModel.findOne({ email });
+      if (user) {
+        sendToken(user, 200, res);
+      } else {
+        const newUser = await UserModel.create({
+          name,
+          email,
+          avatar,
+        });
+        sendToken(newUser, 200, res);
+      }
     } catch (error: any) {
       return next(new ErrorHandler(400, error.message));
     }

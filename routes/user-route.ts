@@ -6,6 +6,7 @@ import {
   loginUser,
   logoutUser,
   registerationUser,
+  socialAuth,
   updateAccessToken,
 } from "../controllers/user-controller";
 
@@ -17,5 +18,6 @@ userRouter.post("/login", loginUser);
 userRouter.get("/logout", isAuthenticatedUser, logoutUser);
 userRouter.get("/refresh", updateAccessToken);
 userRouter.get("/me", isAuthenticatedUser, getUserInfo);
+userRouter.post("/social-auth", socialAuth);
 
 export default userRouter;
