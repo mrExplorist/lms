@@ -11,6 +11,7 @@ import path from "path";
 import sendMail from "../utils/sendMail";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { sendToken } from "../utils/jwt";
+import { redis } from "../utils/redis";
 
 // Register a user => /api/v1/register
 interface IRegisterationBody {
@@ -153,6 +154,7 @@ export const loginUser = CatchAsyncError(
       }
 
       const user = await UserModel.findOne({ email }).select("+password");
+
       if (!user) {
         return next(new ErrorHandler(400, "Invalid Email or Password"));
       }
@@ -177,6 +179,9 @@ export const logoutUser = CatchAsyncError(
       // clear cookies
       res.clearCookie("accessToken");
       res.clearCookie("refreshToken");
+
+      // remove session from redis database
+      await redis.del(`session:${req.user?._id}`);
 
       res.status(200).json({
         success: true,
