@@ -12,6 +12,8 @@ import sendMail from "../utils/sendMail";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import { sendToken } from "../utils/jwt";
 import { redis } from "../utils/redis";
+import { get } from "http";
+import { getUserById } from "../services/user-service";
 
 // Register a user => /api/v1/register
 interface IRegisterationBody {
@@ -86,6 +88,7 @@ interface IActivationToken {
 }
 
 export const createActivationToken = (user: any): IActivationToken => {
+  // Create 4 digit activation code
   const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const token = jwt.sign(
     { user, activationCode },
@@ -192,3 +195,56 @@ export const logoutUser = CatchAsyncError(
     }
   },
 );
+
+// Update access token
+export const updateAccessToken = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { refreshToken } = req.cookies;
+
+      if (!refreshToken) {
+        return next(
+          new ErrorHandler(401, "Please login to access this resource"),
+        );
+      }
+
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET! as string,
+      );
+
+      if (!decoded) {
+        return next(
+          new ErrorHandler(401, "Could not refresh token, Please login again"),
+        );
+      }
+
+      const session = await redis.get(`session:${(decoded as any).id}`);
+
+      if (!session) {
+        return next(
+          new ErrorHandler(401, "User Not Found, Please login to access"),
+        );
+      }
+
+      const user = JSON.parse(session);
+
+      const accessToken = jwt.sign(
+        { id: user._id },
+        process.env.ACCESS_TOKEN_SECRET! as string,
+        {
+          expiresIn: "5m",
+        },
+      );
+
+      res.status(200).json({
+        success: true,
+        accessToken,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
+
+// Get user user info
