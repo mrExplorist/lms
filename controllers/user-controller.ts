@@ -248,3 +248,14 @@ export const updateAccessToken = CatchAsyncError(
 );
 
 // Get user user info
+
+export const getUserInfo = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+      getUserById(userId!, res);
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
