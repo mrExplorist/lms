@@ -17,6 +17,7 @@ import {
 } from "../utils/jwt";
 import { redis } from "../utils/redis";
 import sendMail from "../utils/sendMail";
+import cloudinary from "cloudinary";
 
 // Register a user => /api/v1/register
 interface IRegisterationBody {
@@ -203,7 +204,7 @@ export const logoutUser = CatchAsyncError(
 export const updateAccessToken = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const refresh_token = req.cookies.refreshToken;
+      const refresh_token = req.cookies.refresh_token;
 
       const decoded = jwt.verify(
         refresh_token,
@@ -337,6 +338,60 @@ export const updateUserInfo = CatchAsyncError(
       res.status(200).json({
         success: true,
         user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
+
+// Update user password
+interface IUpdateUserPasswordBody {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export const updateUserPassword = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+      const { currentPassword, newPassword } =
+        req.body as IUpdateUserPasswordBody;
+
+      if (!currentPassword || !newPassword) {
+        return next(
+          new ErrorHandler(400, "Please enter current & new password"),
+        );
+      }
+
+      const user = await UserModel.findById(userId).select("+password");
+
+      if (!user) {
+        return next(new ErrorHandler(404, "User not found"));
+      }
+
+      if (user?.password === undefined) {
+        return next(new ErrorHandler(404, "Invalid User"));
+      }
+
+      // check if current password is correct
+      const isPasswordMatched = await user?.comparePassword(currentPassword);
+
+      if (!isPasswordMatched) {
+        return next(new ErrorHandler(400, "Invalid Password"));
+      }
+
+      user.password = newPassword;
+
+      await user.save();
+
+      // update user info in redis database
+      await redis.set(`session:${userId}`, JSON.stringify(user));
+
+      res.status(200).json({
+        success: true,
+        user,
+        message: "Password updated successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(400, error.message));
