@@ -10,6 +10,7 @@ import ejs from "ejs";
 import path from "path";
 import sendMail from "../utils/sendMail";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
+import { sendToken } from "../utils/jwt";
 
 // Register a user => /api/v1/register
 interface IRegisterationBody {
@@ -129,6 +130,57 @@ export const activateUser = CatchAsyncError(
       });
       res.status(201).json({
         success: true,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
+
+// Login User
+
+interface ILoginRequest {
+  email: string;
+  password: string;
+}
+
+export const loginUser = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, password } = req.body as ILoginRequest;
+      if (!email || !password) {
+        return next(new ErrorHandler(400, "Please enter email & password"));
+      }
+
+      const user = await UserModel.findOne({ email }).select("+password");
+      if (!user) {
+        return next(new ErrorHandler(400, "Invalid Email or Password"));
+      }
+
+      // check if password is correct or not matched with the database password field value using comparePassword method
+      const isPasswordMatched = await user.comparePassword(password);
+      if (!isPasswordMatched) {
+        return next(new ErrorHandler(400, "Invalid Email or Password"));
+      }
+
+      sendToken(user, 200, res);
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
+
+// Logout user
+export const logoutUser = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // clear cookies
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
+
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(400, error.message));
