@@ -398,3 +398,67 @@ export const updateUserPassword = CatchAsyncError(
     }
   },
 );
+
+// Update user avatar
+
+interface IUpdateUserAvatarBody {
+  avatar: string;
+}
+
+export const updateUserAvatar = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+
+      const { avatar } = req.body;
+
+      const user = await UserModel.findById(userId);
+
+      // delete previous avatar from cloudinary server if exists in database and cloudinary server both
+
+      if (!user) {
+        return next(new ErrorHandler(404, "User not found"));
+      }
+
+      if (avatar && user) {
+        // delete previous avatar from cloudinary server if exists in database and cloudinary server both
+        if (user?.avatar?.public_id) {
+          await cloudinary.v2.uploader.destroy(user?.avatar?.public_id);
+
+          //  Now update the avatar
+          const myCloud = await cloudinary.v2.uploader.upload(avatar, {
+            folder: "avatars",
+            width: 150,
+          });
+          user.avatar = {
+            public_id: myCloud.public_id,
+            url: myCloud.secure_url,
+          };
+        } else {
+          //  Now update the avatar
+          const myCloud = await cloudinary.v2.uploader.upload(avatar, {
+            folder: "avatars",
+            width: 150,
+          });
+          user.avatar = {
+            public_id: myCloud.public_id,
+            url: myCloud.secure_url,
+          };
+        }
+      }
+
+      await user.save();
+
+      // update user info in redis database
+      await redis.set(`session:${userId}`, JSON.stringify(user));
+
+      res.status(200).json({
+        success: true,
+        user,
+        message: "Avatar updated successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
