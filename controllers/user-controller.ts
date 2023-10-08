@@ -2,7 +2,7 @@ require("dotenv").config();
 
 import { NextFunction, Request, Response } from "express";
 
-import jwt, { Secret } from "jsonwebtoken";
+import jwt, { JwtPayload, Secret } from "jsonwebtoken";
 
 import ejs from "ejs";
 import path from "path";
@@ -10,7 +10,11 @@ import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import UserModel, { IUser } from "../models/user-model";
 import { getUserById } from "../services/user-service";
 import ErrorHandler from "../utils/errorHandler";
-import { sendToken } from "../utils/jwt";
+import {
+  accessTokenOptions,
+  refreshTokenOptions,
+  sendToken,
+} from "../utils/jwt";
 import { redis } from "../utils/redis";
 import sendMail from "../utils/sendMail";
 
@@ -199,18 +203,12 @@ export const logoutUser = CatchAsyncError(
 export const updateAccessToken = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { refreshToken } = req.cookies;
-
-      if (!refreshToken) {
-        return next(
-          new ErrorHandler(401, "Please login to access this resource"),
-        );
-      }
+      const refresh_token = req.cookies.refreshToken;
 
       const decoded = jwt.verify(
-        refreshToken,
+        refresh_token,
         process.env.REFRESH_TOKEN_SECRET! as string,
-      );
+      ) as JwtPayload;
 
       if (!decoded) {
         return next(
@@ -235,6 +233,20 @@ export const updateAccessToken = CatchAsyncError(
           expiresIn: "5m",
         },
       );
+
+      // update refresh token
+      const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.REFRESH_TOKEN_SECRET! as string,
+        {
+          expiresIn: "3d",
+        },
+      );
+
+      req.user = user;
+
+      res.cookie("access_token", accessToken, accessTokenOptions);
+      res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
       res.status(200).json({
         success: true,
@@ -282,6 +294,50 @@ export const socialAuth = CatchAsyncError(
         });
         sendToken(newUser, 200, res);
       }
+    } catch (error: any) {
+      return next(new ErrorHandler(400, error.message));
+    }
+  },
+);
+
+// Update user info
+interface IUpdateUserInfoBody {
+  name?: string;
+  email?: string;
+}
+
+export const updateUserInfo = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+      const { name, email } = req.body as IUpdateUserInfoBody;
+
+      const user = await UserModel.findById(userId);
+
+      if (!user) {
+        return next(new ErrorHandler(404, "User not found"));
+      }
+      if (email && user) {
+        const isEmailExist = await UserModel.findOne({ email });
+        if (isEmailExist) {
+          return next(new ErrorHandler(400, "Email already exists"));
+        }
+        user.email = email;
+      }
+
+      if (name && user) {
+        user.name = name;
+      }
+
+      await user.save();
+
+      // update user info in redis database
+      await redis.set(`session:${userId}`, JSON.stringify(user));
+
+      res.status(200).json({
+        success: true,
+        user,
+      });
     } catch (error: any) {
       return next(new ErrorHandler(400, error.message));
     }
