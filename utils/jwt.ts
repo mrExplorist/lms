@@ -12,6 +12,32 @@ interface ITokenOptions {
   secure?: boolean;
 }
 
+const accessTokenExpiresIn = parseInt(
+  process.env.ACCESS_TOKEN_EXPIRES || "300",
+  10,
+);
+const refreshTokenExpiresIn = parseInt(
+  process.env.REFRESH_TOKEN_EXPIRES || "1200",
+  10,
+);
+
+// set token options
+export const accessTokenOptions: ITokenOptions = {
+  expiresIn: new Date(Date.now() + accessTokenExpiresIn * 60 * 60 * 1000),
+  maxAge: accessTokenExpiresIn * 60 * 60 * 1000,
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production" ? true : false,
+};
+
+export const refreshTokenOptions: ITokenOptions = {
+  expiresIn: new Date(Date.now() + refreshTokenExpiresIn * 24 * 60 * 60 * 1000),
+  maxAge: refreshTokenExpiresIn * 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production" ? true : false,
+};
+
 export const sendToken = (user: IUser, statusCode: number, res: Response) => {
   const accessToken = user.SignAccessToken();
   const refreshToken = user.SignRefreshToken();
@@ -25,31 +51,6 @@ export const sendToken = (user: IUser, statusCode: number, res: Response) => {
   );
 
   // parse envireonment variables to integer with fallback
-  const accessTokenExpiresIn = parseInt(
-    process.env.ACCESS_TOKEN_EXPIRES || "300",
-    10,
-  );
-  const refreshTokenExpiresIn = parseInt(
-    process.env.REFRESH_TOKEN_EXPIRES || "1200",
-    10,
-  );
-
-  // set token options
-  const accessTokenOptions: ITokenOptions = {
-    expiresIn: new Date(Date.now() + accessTokenExpiresIn * 1000),
-    maxAge: accessTokenExpiresIn * 1000,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production" ? true : false,
-  };
-
-  const refreshTokenOptions: ITokenOptions = {
-    expiresIn: new Date(Date.now() + refreshTokenExpiresIn * 1000),
-    maxAge: refreshTokenExpiresIn * 1000,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production" ? true : false,
-  };
 
   // set cookies
   res.cookie("accessToken", accessToken, accessTokenOptions);
