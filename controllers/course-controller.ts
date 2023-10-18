@@ -246,3 +246,69 @@ export const addQuestion = CatchAsyncError(
     }
   },
 );
+
+// add reply to the question in the course
+
+interface IAddAnswerData {
+  answer: string;
+  courseId: string;
+  contentId: string;
+  questionId: string;
+}
+
+export const addAnswer = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data: IAddAnswerData = req.body;
+      const { answer, courseId, contentId, questionId } = data;
+
+      const course = await CourseModal.findById(courseId);
+
+      if (!course) {
+        return next(new ErrorHandler(404, "Course not found"));
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(contentId)) {
+        return next(new ErrorHandler(400, "Invalid content id"));
+      }
+
+      const courseData = course?.courseData;
+
+      const courseContent = courseData?.find((content: any) =>
+        content._id.equals(contentId),
+      );
+
+      if (!courseContent) {
+        return next(new ErrorHandler(404, "Content not found"));
+      }
+
+      const question = courseContent?.questions.find((question: any) =>
+        question._id.equals(questionId),
+      );
+
+      if (!question) {
+        return next(new ErrorHandler(404, "Question not found"));
+      }
+
+      //  Create new answer object
+
+      const newAnswer: any = {
+        user: req.user,
+        answer,
+      };
+
+      // push it to the questionReplies array in the question object in the courseContent object in the course document in the database
+      question.questionReplies.push(newAnswer);
+
+      // save the course document in the database and return the success message
+      await course?.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Answer added successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  },
+);
