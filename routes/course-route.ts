@@ -4,7 +4,8 @@ import userRouter from "./user-route";
 import {
   editCourse,
   getAllCourses,
-  getCourseById,
+  getCourseByUser,
+  getSingleCourse,
   uploadCourse,
 } from "../controllers/course-controller";
 
@@ -30,9 +31,16 @@ courseRouter.put(
 );
 
 // route for getting a course by id
-courseRouter.get("/get-course/:id", getCourseById);
+courseRouter.get("/get-course/:id", getSingleCourse);
 
 // Route for getting all courses
 courseRouter.get("/get-courses", getAllCourses);
+
+// Get course-content by user
+courseRouter.get(
+  "/get-course-content/:id",
+  isAuthenticatedUser,
+  getCourseByUser,
+);
 
 export default courseRouter;
