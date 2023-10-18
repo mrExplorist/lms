@@ -10,6 +10,10 @@ import CourseModal from "../models/course-model";
 import { isAuthenticatedUser } from "../middleware/auth";
 import { redis } from "../utils/redis";
 import mongoose from "mongoose";
+import path from "path";
+
+import ejs from "ejs";
+import sendMail from "../utils/sendMail";
 
 // upload course
 export const uploadCourse = CatchAsyncError(
@@ -303,9 +307,37 @@ export const addAnswer = CatchAsyncError(
       // save the course document in the database and return the success message
       await course?.save();
 
+      // send the notification to the admin that a new answer is added to the question in the course
+
+      if (req.user?._id === question.user._id) {
+        //  create a notification
+      } else {
+        const data = {
+          name: question.user.name,
+          title: courseContent.title,
+        };
+
+        const html = await ejs.renderFile(
+          path.join(__dirname, "../mails/question-reply.ejs"),
+          data,
+        );
+
+        try {
+          await sendMail({
+            email: question.user.email,
+            subject: "Question Reply",
+            template: "question-reply.ejs",
+            data,
+          });
+        } catch (error: any) {
+          return next(new ErrorHandler(400, error.message));
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: "Answer added successfully",
+        course,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
