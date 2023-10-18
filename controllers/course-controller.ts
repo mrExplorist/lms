@@ -9,6 +9,7 @@ import { createCourse } from "../services/course-service";
 import CourseModal from "../models/course-model";
 import { isAuthenticatedUser } from "../middleware/auth";
 import { redis } from "../utils/redis";
+import mongoose from "mongoose";
 
 // upload course
 export const uploadCourse = CatchAsyncError(
@@ -180,6 +181,65 @@ export const getCourseByUser = CatchAsyncError(
       res.status(200).json({
         success: true,
         courseContent,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  },
+);
+
+// add question in the course
+
+interface IAddQuestionData {
+  question: string;
+  courseId: string;
+  contentId: string;
+}
+
+export const addQuestion = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data: IAddQuestionData = req.body;
+      const { question, courseId, contentId } = data;
+
+      const course = await CourseModal.findById(courseId);
+
+      if (!course) {
+        return next(new ErrorHandler(404, "Course not found"));
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(contentId)) {
+        return next(new ErrorHandler(400, "Invalid content id"));
+      }
+
+      const courseData = course?.courseData;
+
+      const courseContent = courseData?.find((content: any) =>
+        content._id.equals(contentId),
+      );
+
+      if (!courseContent) {
+        return next(new ErrorHandler(404, "Content not found"));
+      }
+
+      //  Create new question object
+
+      const newQuestion: any = {
+        user: req.user,
+        question,
+        questionReplies: [],
+      };
+
+      // push it to the questions array in the courseContent object in the course document in the database
+      courseContent.questions.push(newQuestion);
+
+      // save the course document in the database and return the success message
+
+      await course?.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Question added successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
